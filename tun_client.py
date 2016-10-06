@@ -7,6 +7,12 @@ IFF_TUN = 0x0001
 IFF_TAP = 0x0002
 IFF_NO_PI = 0x1000
 
+Buffer=65535
+
+write_size=65535
+
+read_size=2048
+
 import os,fcntl,socket,struct,subprocess,threading
 
 def tun_create(if_name,ipaddress='172.16.10.1/24',brd='172.16.10.255',gateway='',owner=0):
@@ -27,27 +33,57 @@ s=socket.socket()
 
 s.connect(address)
 
-data = s.recv(2048)
+data = s.recv(Buffer)
 
 tun=tun_create(if_name='tun0',ipaddress='{}/24'.format(socket.inet_ntoa(data)))
 fd=tun.fileno()
 
 def tun_recv():
-	while 1:
-		data=s.recv(2048)
-		#print(socket.inet_ntoa(data[12:16]),'-->',socket.inet_ntoa(data[16:20]))
-		os.write(fd,data)
+	try:
+		while 1:
+			data = s.recv(Buffer)
+	
+			if data == b'':
+				raise KeyboardInterrupt('server exit!')
+	
+			length,data = struct.unpack('!H',data[0:2])[0],data[2:]
 
-th = threading.Thread(target=tun_recv,daemon=1)
-th.start()
+			print('data length ',length)
+			if length == len(data):
+				os.write(fd,data)
+	
+			else:# length > len(data):
+	
+				print('one recv ... ',len(data))
+				length-=len(data)
+				while length > 0:
+					tmp=s.recv(length)
+					data += tmp
+					length-=len(tmp)
+				print('execute s.recv()...ok')
+				print('s.recv data len',len(data))
+				os.write(fd,data)	
+	except KeyboardInterrupt:
+			exit(-1)
+	finally:
+		s.close()
+def tun_send():
+	while 1:
+		data = os.read(fd,read_size)
+		length=len(data)
+		#print(socket.inet_ntoa(data[12:16]),'-->',socket.inet_ntoa(data[16:20]))
+		print('os.read data size',len(data))
+		data=struct.pack('!H',length)+data
+		send_count = s.send(data)
+		print('sned size',send_count)
+		if send_count != len(data):
+			print('Error send :','send size',send_count,'data size',len(data))
 
 try:
-	while 1:
-		user_data = os.read(fd,2048)
-		#print(socket.inet_ntoa(data[12:16]),'-->',socket.inet_ntoa(data[16:20]))
-		s.send(user_data)
-
-except KeyboardInterrupt:
+	th=threading.Thread(target=tun_recv,daemon=1)
+	th.start()
+	tun_send()
+except (KeyboardInterrupt,OSError):
 	print('tun0 exit...')
 finally:
 	s.close()

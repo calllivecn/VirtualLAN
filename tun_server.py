@@ -5,6 +5,7 @@ import fcntl,subprocess,socket,struct,multiprocessing,queue,threading
 
 sock_dict={}
 sock_dict_lock=threading.Lock()
+Buffer=65535
 
 def accept_access():
 	global sock_dict
@@ -12,32 +13,38 @@ def accept_access():
 	sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
 	sock.bind(('0.0.0.0',6789))
 	sock.listen(5)
-#	while 1:
 	client,addr = sock.accept()
-	source_addr = socket.inet_aton('172.16.10.100')
+	source_addr = socket.inet_aton('172.16.10.{}'.format(100))
 	client.send(source_addr)
 	with sock_dict_lock:
 			sock_dict[source_addr]=client
-		
+
 	client,addr = sock.accept()
-	source_addr = socket.inet_aton('172.16.10.101')
+	source_addr = socket.inet_aton('172.16.10.{}'.format(101))
 	client.send(source_addr)
 	with sock_dict_lock:
 			sock_dict[source_addr]=client
 
 accept_access()
+
 for k,v in zip(sock_dict.keys(),sock_dict.values()):
 	print(k,v)
 
 def router(source,dest):
 	global sock_dict
 	while 1:
-		data=sock_dict[source].recv(2048)
+		data=sock_dict[source].recv(65535)
+		
+		if socket.inet_ntoa(source) == '172.16.10.100':
+			print('172.16.10.100 --> size',len(data))
+		else:
+			print('172.16.10.101 --> size',len(data))
 		if data == b'':
 			with sock_dict_lock:
 				sock_dict.pop(source)
+			print(socket.inet_ntoa(source),'exit')
 			break
-		print(socket.inet_ntoa(source),'-->',socket.inet_ntoa(dest))
+		#print(socket.inet_ntoa(source),'-->',socket.inet_ntoa(dest))
 		sock_dict[dest].send(data)
 
 

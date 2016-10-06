@@ -23,8 +23,8 @@ fd = tun.fileno()
 try:
 	while 1:
 		data = os.read(fd,2048)
-		print(data)
-		print('destination ip :',socket.inet_ntoa(data[12:16]),'source ip',socket.inet_ntoa(data[16:20]))
+		print('head 4 byte',hex(struct.unpack('!I',data[0:4])[0]))
+		print('os.read data size',len(data),'destination ip :',socket.inet_ntoa(data[20:24]),'source ip',socket.inet_ntoa(data[16:20]))
 except KeyboardInterrupt:
 	print('exit...')
 	exit(0)
