@@ -39,30 +39,36 @@ tun=tun_create(if_name='tun0',ipaddress='{}/24'.format(socket.inet_ntoa(data)))
 fd=tun.fileno()
 
 def tun_recv():
+	
+	cache=b''
+	
+	def Recv():
+		nonlocal cache
+		cache += s.recv(Buffer)
+		if cache == b'':
+			raise KeyboardInterrupt('server exit!')
+		
 	try:
+
 		while 1:
-			data = s.recv(Buffer)
-	
-			if data == b'':
-				raise KeyboardInterrupt('server exit!')
-	
-			length,data = struct.unpack('!H',data[0:2])[0],data[2:]
+			if cache == b'':
+				Recv()
+
+			length,cache = struct.unpack('!H',cache[0:2])[0],cache[2:]
+			
+			if cache ==b'':
+				Recv()
 
 			print('data length ',length)
-			if length == len(data):
+			if length <= len(cache):
+				data,cache = cache[0:length],cache[length:]
 				os.write(fd,data)
-	
-			else:# length > len(data):
-	
-				print('one recv ... ',len(data))
-				length-=len(data)
-				while length > 0:
-					tmp=s.recv(length)
-					data += tmp
-					length-=len(tmp)
-				print('execute s.recv()...ok')
-				print('s.recv data len',len(data))
-				os.write(fd,data)	
+			else:
+				while length > len(cache):
+					Recv()
+				data,cache = cache[0:length],cache[length:]
+				os.write(fd,data)
+
 	except KeyboardInterrupt:
 			exit(-1)
 	finally:
@@ -87,6 +93,3 @@ except (KeyboardInterrupt,OSError):
 	print('tun0 exit...')
 finally:
 	s.close()
-
-
-
