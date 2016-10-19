@@ -59,7 +59,7 @@ def tun_recv():
 			if cache ==b'':
 				Recv()
 
-			print('data length ',length)
+			#print('data length ',length)
 			if length <= len(cache):
 				data,cache = cache[0:length],cache[length:]
 				os.write(fd,data)
@@ -77,11 +77,10 @@ def tun_send():
 	while 1:
 		data = os.read(fd,read_size)
 		length=len(data)
-		#print(socket.inet_ntoa(data[12:16]),'-->',socket.inet_ntoa(data[16:20]))
-		print('os.read data size',len(data))
+		#print('os.read data size',len(data))
 		data=struct.pack('!H',length)+data
 		send_count = s.send(data)
-		print('sned size',send_count)
+		#print('sned size',send_count)
 		if send_count != len(data):
 			print('Error send :','send size',send_count,'data size',len(data))
 

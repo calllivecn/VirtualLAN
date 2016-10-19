@@ -34,15 +34,16 @@ def router(source,dest):
 	global sock_dict
 	while 1:
 		data=sock_dict[source].recv(65535)
-		
+		'''		
 		if socket.inet_ntoa(source) == '172.16.10.100':
 			print('172.16.10.100 --> size',len(data))
 		else:
 			print('172.16.10.101 --> size',len(data))
+		'''
 		if data == b'':
 			with sock_dict_lock:
 				sock_dict.pop(source)
-			print(socket.inet_ntoa(source),'exit')
+			#print(socket.inet_ntoa(source),'exit')
 			break
 		#print(socket.inet_ntoa(source),'-->',socket.inet_ntoa(dest))
 		sock_dict[dest].send(data)
