@@ -45,18 +45,18 @@ def tun_recv():
 	def Recv():
 		nonlocal cache
 		cache += s.recv(Buffer)
-		if cache == b'':
+		if not cache:
 			raise KeyboardInterrupt('server exit!')
 		
 	try:
 
 		while 1:
-			if cache == b'':
+			if not cache :
 				Recv()
 
 			length,cache = struct.unpack('!H',cache[0:2])[0],cache[2:]
 			
-			if cache ==b'':
+			if not cache :
 				Recv()
 
 			#print('data length ',length)
