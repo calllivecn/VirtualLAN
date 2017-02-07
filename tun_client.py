@@ -73,6 +73,7 @@ def tun_recv():
 			exit(-1)
 	finally:
 		s.close()
+
 def tun_send():
 	while 1:
 		data = os.read(fd,read_size)
