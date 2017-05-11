@@ -1,12 +1,23 @@
 
 
-from ctypes import *
+from ctypes import Structure,Union,c_char,c_char_p,c_ubyte,c_short,c_ushort,c_int,c_ulong,ARRAY,POINTER,pointer
 
 
 class sockaddr(Structure):
 	_fields_=[('sa_family',c_ushort),
-				('sa_data',ARRAY(c_char,10))]
+				('sa_data',ARRAY(c_char,14))]
 
+class ifa_ifu(Union):
+	_fields_=[('ifu_broadaddr',sockaddr),
+				('ifu_dstaddr',sockaddr)]
+
+class ifaddr(Structure):
+	pass
+
+ifaddr._fields_=[('ifa_addr',sockaddr),
+				('ifa_ifu',ifa_ifu),
+				('iface',None),
+				('ifaddr',POINTER(ifaddr))]
 
 class ifmap(Structure):
 	_fields_=[('mem_start',c_ulong),
@@ -56,3 +67,39 @@ TUNSETOWNER = TUNSETIFF + 2
 IFF_TUN = 0x0001
 IFF_TAP = 0x0002
 IFF_NO_PI = 0x1000
+
+
+
+
+import sys
+from socket import socket,AF_INET,SOCK_DGRAM
+from fcntl import ioctl
+
+'''
+def get_iface_list():
+	max_iface = 32
+	bytes_s = max_iface *32
+	is64bit = sys.maxsize > 1<<32
+	struct_size = 40 if is64bit else 32
+	
+	try:
+		s = socket(AF_INET,SOCK_DGRAM)
+		result = ioctl(s.fileno(),0x8912,)
+'''
+
+def get_ip_ifname(ifname):
+		ifr = ifreq()
+		ifrn_name = ifr_ifrn()
+		ifrn_name.ifrn_name =  ifname[:15].encode()
+		ifr.ifr_ifrn = ifrn_name
+		s = socket(AF_INET,SOCK_DGRAM)
+
+		try:
+			result = ioctl(s.fileno(),0x8915,ifr)
+			print(result)
+			print(ifr.ifr_ifru.ifru_dstaddr.sa_data)
+		finally:
+			pass
+
+if __name__ == '__main__':
+	get_ip_ifname('eth0')
