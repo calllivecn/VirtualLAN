@@ -1,65 +1,62 @@
 
+# 操作接口
 
-from ctypes import Structure,Union,c_char,c_char_p,c_ubyte,c_short,c_ushort,c_int,c_ulong,ARRAY,POINTER,pointer
+SIOCADDRT=0x890B
+SIOCDELRT=0x890C
+SIOCRTMSG=0x890D
+SIOCGIFNAME=0x8910
+SIOCSIFLINK=0x8911
+SIOCGIFCONF=0x8912
+SIOCGIFFLAGS=0x8913
+SIOCSIFFLAGS=0x8914
+SIOCGIFADDR=0x8915
+SIOCSIFADDR=0x8916
+SIOCGIFDSTADDR=0x8917
+SIOCSIFDSTADDR=0x8918
+SIOCGIFBRDADDR=0x8919
+SIOCSIFBRDADDR=0x891a
+SIOCGIFNETMASK=0x891b
+SIOCSIFNETMASK=0x891c
+SIOCGIFMETRIC=0x891d
+SIOCSIFMETRIC=0x891e
+SIOCGIFMEM=0x891f
+SIOCSIFMEM=0x8920
+SIOCGIFMTU=0x8921
+SIOCSIFMTU=0x8922
+SIOCSIFNAME=0x8923
+SIOCSIFHWADDR=0x8924
+SIOCGIFENCAP=0x8925
+SIOCSIFENCAP=0x8926
+SIOCGIFHWADDR=0x8927
+SIOCGIFSLAVE=0x8929
+SIOCSIFSLAVE=0x8930
+SIOCADDMULTI=0x8931
+SIOCDELMULTI=0x8932
+SIOCGIFINDEX=0x8933
+SIOGIFINDEX=SIOCGIFINDEX
+SIOCSIFPFLAGS=0x8934
+SIOCGIFPFLAGS=0x8935
+SIOCDIFADDR=0x8936
+SIOCSIFHWBROADCAST=0x8937
+SIOCGIFCOUNT=0x8938
+SIOCGIFBR=0x8940
+SIOCSIFBR=0x8941
+SIOCGIFTXQLEN=0x8942
+SIOCSIFTXQLEN=0x8943
+SIOCDARP=0x8953
+SIOCGARP=0x8954
+SIOCSARP=0x8955
+SIOCDRARP=0x8960
+SIOCGRARP=0x8961
+SIOCSRARP=0x8962
+SIOCGIFMAP=0x8970
+SIOCSIFMAP=0x8971
+SIOCADDDLCI=0x8980
+SIOCDELDLCI=0x8981
+SIOCDEVPRIVATE=0x89F0
+SIOCPROTOPRIVATE=0x89E0
 
-
-class sockaddr(Structure):
-	_fields_=[('sa_family',c_ushort),
-				('sa_data',ARRAY(c_char,14))]
-
-class ifa_ifu(Union):
-	_fields_=[('ifu_broadaddr',sockaddr),
-				('ifu_dstaddr',sockaddr)]
-
-class ifaddr(Structure):
-	pass
-
-ifaddr._fields_=[('ifa_addr',sockaddr),
-				('ifa_ifu',ifa_ifu),
-				('iface',None),
-				('ifaddr',POINTER(ifaddr))]
-
-class ifmap(Structure):
-	_fields_=[('mem_start',c_ulong),
-				('mem_end',c_ulong),
-				('base_addr',c_ushort),
-				('irq',c_ubyte),
-				('dma',c_ubyte),
-				('port',c_ubyte)]
-
-
-class ifr_ifrn(Union):
-	_fields_=[('ifrn_name',ARRAY(c_char,16))]
-
-class ifr_ifru(Union):
-	_fields_=[('ifru_addr',sockaddr),
-				('ifru_dstaddr',sockaddr),
-				('ifru_broadaddr',sockaddr),
-				('ifru_netmask',sockaddr),
-				('ifru_hwaddr',sockaddr),
-				('ifru_flags',c_short),
-				('ifru_ivalue',c_int),
-				('ifru_mtu',c_int),
-				('ifru_map',ifmap),
-				('ifru_slave',ARRAY(c_char,16)),
-				('ifru_newname',ARRAY(c_char,16)),
-				('ifru_data',c_char_p)]
-
-
-
-class ifreq(Structure):
-	_fields_=[('ifr_ifrn',ifr_ifrn),('ifr_ifru',ifr_ifru)]
-
-
-class ifc_ifcu(Union):
-	_fields_=[('ifcu_buf',c_char_p),
-				('ifcu_req',POINTER(ifreq))]
-
-class ifconf(Structure):
-	_fields_=[('ifc_len',c_int),
-				('ifc_ifcu',ifc_ifcu)]
-
-
+IFF_UP = 0x1
 
 # 操作 /dev/net/tun 
 TUNSETIFF = 0x400454ca
@@ -68,38 +65,93 @@ IFF_TUN = 0x0001
 IFF_TAP = 0x0002
 IFF_NO_PI = 0x1000
 
+TUN_DEV_FILE='/dev/net/tun'
 
 
-
-import sys
-from socket import socket,AF_INET,SOCK_DGRAM
+import sys,os
+from socket import socket,AF_INET,SOCK_DGRAM,inet_ntoa,inet_aton
 from fcntl import ioctl
+from struct import pack,unpack
+from array import array
 
-'''
 def get_iface_list():
 	max_iface = 32
-	bytes_s = max_iface *32
+	byte_s = max_iface *32
 	is64bit = sys.maxsize > 1<<32
 	struct_size = 40 if is64bit else 32
 	
 	try:
 		s = socket(AF_INET,SOCK_DGRAM)
-		result = ioctl(s.fileno(),0x8912,)
-'''
+		names = array('B',bytes(byte_s))
+		op = pack('iL',byte_s,names.buffer_info()[0])
+		result = ioctl(s.fileno(),0x8912,op)
+		outbytes = unpack('iL',result)[0]
+		namestr = names.tostring()
+		iface_ip=[]
+		for i in range(0,outbytes,struct_size):
+			iface_ip.append(namestr[i:i+32].split(bytes(1),1)[0].decode())
+			iface_ip.append(inet_ntoa(namestr[i+20:i+24]))
+	except OSError as e:
+		raise e
+
+	return iface_ip
 
 def get_ip_ifname(ifname):
-		ifr = ifreq()
-		ifrn_name = ifr_ifrn()
-		ifrn_name.ifrn_name =  ifname[:15].encode()
-		ifr.ifr_ifrn = ifrn_name
 		s = socket(AF_INET,SOCK_DGRAM)
-
 		try:
-			result = ioctl(s.fileno(),0x8915,ifr)
-			print(result)
-			print(ifr.ifr_ifru.ifru_dstaddr.sa_data)
+			ifr = pack('32s','eth0'.encode())
+			result = ioctl(s.fileno(),0x8915,(ifr))
+			print(inet_ntoa(result[20:24]))
 		finally:
 			pass
 
+def set_ip_ifname(ifname,ip,netmask):
+		s = socket(AF_INET,SOCK_DGRAM)
+		try:
+			ifr = pack('16sH14s',ifname.encode(),2,bytes(2)+inet_aton(ip))
+			result = ioctl(s.fileno(),0x8916,(ifr))
+			ifr = pack('16sH14s',ifname.encode(),2,bytes(2)+inet_aton(netmask))
+			result = ioctl(s.fileno(),0x891c,(ifr))
+		except OSError as e:
+			raise e
+
+def up_iface(ifname):
+	s = socket(AF_INET,SOCK_DGRAM)
+	try:
+		op = pack('16sh',ifname.encode(),0)
+		status = ioctl(s.fileno(),0x8913,op)
+		status = unpack('16sh',status)[1]
+		ifr = pack('16sh',ifname.encode(),status | IFF_UP)
+		result = ioctl(s.fileno(),0x8914,ifr)
+	except OSError as e:
+		raise e
+
+def __check_ifname(ifname='tun'):
+	i=0
+	iface_ip = get_iface_list()
+	while ifname+str(i) in iface_ip:
+		if i > 99999:
+			return False
+		i+=1
+	return ifname+str(i)
+
+def tun_create():
+	'''返回 create (tun_name,tun_fd)'''
+	ifname = __check_ifname()
+	ifr = pack('16sH',ifname.encode(),IFF_TUN | IFF_NO_PI)
+	tun = open(TUN_DEV_FILE,'r+b',buffering=0)
+	ioctl(tun,TUNSETIFF,ifr)
+	ioctl(tun,TUNSETOWNER,0)
+
+	return ifname,tun
+
+
+def tun_active(ifname,ip,netmask=24):
+	up_iface(ifname)
+	set_ip_ifname(ifname,'172.168.10.2','255.255.255.0')
+
 if __name__ == '__main__':
-	get_ip_ifname('eth0')
+	ifname , tun = tun_create()
+	print(ifname,tun)
+	input('按回车键退出...')
+	tun.close()
