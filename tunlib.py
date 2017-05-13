@@ -58,6 +58,11 @@ SIOCPROTOPRIVATE=0x89E0
 
 IFF_UP = 0x1
 
+RTF_UP = 0x0001
+RTF_HOST = 0x0004
+RTF_REJECT = 0x0200
+
+
 # 操作 /dev/net/tun 
 TUNSETIFF = 0x400454ca
 TUNSETOWNER = TUNSETIFF + 2
@@ -108,12 +113,35 @@ def get_ip_ifname(ifname):
 def set_ip_ifname(ifname,ip,netmask):
 		s = socket(AF_INET,SOCK_DGRAM)
 		try:
-			ifr = pack('16sH14s',ifname.encode(),2,bytes(2)+inet_aton(ip))
+			ifr = pack('16sH14s',ifname.encode(),AF_INET,bytes(2)+inet_aton(ip))
 			result = ioctl(s.fileno(),0x8916,(ifr))
-			ifr = pack('16sH14s',ifname.encode(),2,bytes(2)+inet_aton(netmask))
+			ifr = pack('16sH14s',ifname.encode(),AF_INET,bytes(2)+inet_aton(netmask))
 			result = ioctl(s.fileno(),0x891c,(ifr))
 		except OSError as e:
 			raise e
+
+def add_route(ifname,dst_ip,gateway,mask):
+	s = socket(AF_INET,SOCK_DGRAM)
+	op = pack('LH14sH14sH14sH46s',0,
+				AF_INET,bytes(2)+inet_aton(dst_ip),
+				AF_INET,bytes(2)+inet_aton(gateway),
+				AF_INET,bytes(2)+inet_aton(mask),
+				RTF_UP | RTF_HOST | RTF_REJECT,
+				bytes(1))
+	ioctl(s.fileno(),0x890B,op)
+
+def del_route(dst_ip,gateway,mask):
+	s = socket(AF_INET,SOCK_DGRAM)
+	
+	op = pack('LH14sH14sH14sH46s',0,
+				AF_INET,bytes(2)+inet_aton(dst_ip),
+				AF_INET,bytes(2)+inet_aton(gateway),
+				AF_INET,bytes(2)+inet_aton(mask),
+				RTF_UP | RTF_HOST | RTF_REJECT,
+				bytes(1))
+	ioctl(s.fileno(),0x890c,op)
+
+
 
 def up_iface(ifname):
 	s = socket(AF_INET,SOCK_DGRAM)
@@ -136,7 +164,7 @@ def __check_ifname(ifname='tun'):
 	return ifname+str(i)
 
 def tun_create():
-	'''返回 create (tun_name,tun_fd)'''
+	'''返回 create (tun_name,tun_file_object)'''
 	ifname = __check_ifname()
 	ifr = pack('16sH',ifname.encode(),IFF_TUN | IFF_NO_PI)
 	tun = open(TUN_DEV_FILE,'r+b',buffering=0)
@@ -146,12 +174,37 @@ def tun_create():
 	return ifname,tun
 
 
+def mask(netmask=24):
+	mask = 0
+	for i in range(32 - netmask,32):
+		mask = mask | 1<<i
+	
+	return inet_ntoa(pack('!I',mask))
+
+def ip_add_route(dst='0.0.0.0',gw,mask):
+	subprocess.check_call('ip route add {}/{} via {}'.format(dst,mask,gw))
+
+def ip_del_route(dst='0.0.0.0',gw,mask):
+	subprocess.check_call('ip route del {}/{} via {}'.format(dst,mask,gw))
+
 def tun_active(ifname,ip,netmask=24):
 	up_iface(ifname)
-	set_ip_ifname(ifname,'172.168.10.2','255.255.255.0')
+	set_ip_ifname(ifname,ip,mask(netmask))
 
 if __name__ == '__main__':
+	#add_route('0.0.0.0','10.0.0.254',mask(24))
+	#del_route('0.0.0.0','10.0.0.254',mask(32))
+
+
 	ifname , tun = tun_create()
-	print(ifname,tun)
-	input('按回车键退出...')
-	tun.close()
+	tun_active(ifname,'10.0.0.1',24)
+	fd = tun.fileno()
+	try:
+		while True:
+			data = os.read(fd,65535)
+			print(data)
+	except KeyboardInterrupt:
+		print('exit...')
+	finally:
+	#input('pause...')
+		tun.close()
