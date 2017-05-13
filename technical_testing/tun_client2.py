@@ -94,3 +94,4 @@ except (KeyboardInterrupt,OSError):
 	print('tun0 exit...')
 finally:
 	s.close()
+	os.close(fd)
