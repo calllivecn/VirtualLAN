@@ -16,7 +16,7 @@ read_size=2048
 import os,fcntl,socket,struct,subprocess,threading
 
 def tun_create(if_name,ipaddress='172.16.10.1/24',brd='172.16.10.255',gateway='',owner=0):
-    tun = open('/dev/net/tun','r+b',buffering=0)
+    tun = os.open('/dev/net/tun',os.O_RDWR)
     ifr = struct.pack('16sH',if_name.encode(),IFF_TUN | IFF_NO_PI)
     fcntl.ioctl(tun,TUNSETIFF,ifr)
     fcntl.ioctl(tun,TUNSETOWNER,owner)

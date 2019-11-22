@@ -181,10 +181,10 @@ def mask(netmask=24):
 	
 	return inet_ntoa(pack('!I',mask))
 
-def ip_add_route(dst='0.0.0.0',gw,mask):
+def ip_add_route(gw,mask,dst='0.0.0.0'):
 	subprocess.check_call('ip route add {}/{} via {}'.format(dst,mask,gw))
 
-def ip_del_route(dst='0.0.0.0',gw,mask):
+def ip_del_route(gw,mask,dst='0.0.0.0'):
 	subprocess.check_call('ip route del {}/{} via {}'.format(dst,mask,gw))
 
 def tun_active(ifname,ip,netmask=24):
