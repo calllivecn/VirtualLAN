@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#coding=utf-8
+# coding=utf-8
 
 import fcntl
 import os
@@ -16,7 +16,7 @@ IFF_TAP = 0x0002
 IFF_NO_PI = 0x1000
 
 # Open TUN device file.
-tun = open('/dev/net/tun', 'r+b',buffering=0)
+tun = open('/dev/net/tun', 'r+b', buffering=0)
 # Tall it we want a TUN device named tun0.
 ifr = struct.pack('16sH', b'tun0', IFF_TUN | IFF_NO_PI)
 fcntl.ioctl(tun, TUNSETIFF, ifr)
@@ -25,11 +25,11 @@ fcntl.ioctl(tun, TUNSETOWNER, 1000)
 
 # Bring it up and assign addresses.
 subprocess.check_call('ifconfig tun0 192.168.7.1 pointopoint 192.168.7.2 up',
-        shell=True)
+                      shell=True)
 
 while True:
     # Read an IP packet been sent to this TUN device.
-    packet = array('B',os.read(tun.fileno(), 2048))
+    packet = array('B', os.read(tun.fileno(), 2048))
 
     # Modify it to an ICMP Echo Reply packet.
     #
@@ -44,11 +44,11 @@ while True:
     # difference.
     if True:
         # Change ICMP type code to Echo Reply (0).
-        packet[20]=0
+        packet[20] = 0
         # Clear original ICMP Checksum field.
         #packet[22:24] = chr(0), chr(0)
-        packet[22]=0
-        packet[23]=0
+        packet[22] = 0
+        packet[23] = 0
         # Calculate new checksum.
         checksum = 0
         # for every 16-bit of the ICMP payload:
@@ -59,7 +59,7 @@ while True:
         checksum = ~(checksum + 4) & 0xffff
         # Put the new checksum back into the packet.
         packet[22] = checksum >> 8
-        packet[23] = checksum & ((1 << 8) -1)
+        packet[23] = checksum & ((1 << 8) - 1)
 
     # Write the reply packet into TUN device.
     os.write(tun.fileno(), bytes(packet))

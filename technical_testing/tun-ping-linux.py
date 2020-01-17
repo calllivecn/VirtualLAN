@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#coding=utf-8
+# coding=utf-8
 
 import fcntl
 import os
@@ -25,7 +25,7 @@ fcntl.ioctl(tun, TUNSETOWNER, 1000)
 
 # Bring it up and assign addresses.
 subprocess.check_call('ifconfig tun0 192.168.7.1 pointopoint 192.168.7.2 up',
-        shell=True)
+                      shell=True)
 
 while True:
     # Read an IP packet been sent to this TUN device.
@@ -57,7 +57,7 @@ while True:
         checksum = ~(checksum + 4) & 0xffff
         # Put the new checksum back into the packet.
         packet[22] = chr(checksum >> 8)
-        packet[23] = chr(checksum & ((1 << 8) -1))
+        packet[23] = chr(checksum & ((1 << 8) - 1))
 
     # Write the reply packet into TUN device.
     os.write(tun.fileno(), ''.join(packet))

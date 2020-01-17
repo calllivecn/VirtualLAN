@@ -1,5 +1,5 @@
-#/usr/bin/env python3
-#coding=utf-8
+# /usr/bin/env python3
+# coding=utf-8
 
 import winreg as reg
 import win32file
@@ -15,20 +15,24 @@ def get_device_guid():
                 key_name = reg.EnumKey(adapters, i)
                 with reg.OpenKey(adapters, key_name) as adapter:
                     try:
-                        component_id = reg.QueryValueEx(adapter, 'ComponentId')[0]
+                        component_id = reg.QueryValueEx(
+                            adapter, 'ComponentId')[0]
                         if component_id == 'tap0801':
                             return reg.QueryValueEx(adapter, 'NetCfgInstanceId')[0]
                     except (WindowsError, err):
-					
+
                         pass
         except (WindowsError, err):
             pass
 
+
 def CTL_CODE(device_type, function, method, access):
-    return (device_type << 16) | (access << 14) | (function << 2) | method;
+    return (device_type << 16) | (access << 14) | (function << 2) | method
+
 
 def TAP_CONTROL_CODE(request, method):
     return CTL_CODE(34, request, method, 0)
+
 
 TAP_IOCTL_CONFIG_POINT_TO_POINT = TAP_CONTROL_CODE(5, 0)
 TAP_IOCTL_SET_MEDIA_STATUS = TAP_CONTROL_CODE(6, 0)
@@ -41,14 +45,15 @@ if __name__ == '__main__':
                                   win32file.GENERIC_READ | win32file.GENERIC_WRITE,
                                   win32file.FILE_SHARE_READ | win32file.FILE_SHARE_WRITE,
                                   None, win32file.OPEN_EXISTING,
-                                  win32file.FILE_ATTRIBUTE_SYSTEM, # | win32file.FILE_FLAG_OVERLAPPED,
+                                  win32file.FILE_ATTRIBUTE_SYSTEM,  # | win32file.FILE_FLAG_OVERLAPPED,
                                   None)
     print(handle.handle)
     if False:
         win32file.DeviceIoControl(handle, TAP_IOCTL_CONFIG_POINT_TO_POINT,
-                                  '\xc0\xa8\x11\x01\xc0\xa8\x11\x10', None);
+                                  '\xc0\xa8\x11\x01\xc0\xa8\x11\x10', None)
     else:
-        win32file.DeviceIoControl(handle, TAP_IOCTL_SET_MEDIA_STATUS, '\x01\x00\x00\x00', None)
+        win32file.DeviceIoControl(
+            handle, TAP_IOCTL_SET_MEDIA_STATUS, '\x01\x00\x00\x00', None)
         win32file.DeviceIoControl(handle, TAP_IOCTL_CONFIG_TUN,
                                   '\x0a\x03\x00\x01\x0a\x03\x00\x00\xff\xff\xff\x00', None)
     while True:
